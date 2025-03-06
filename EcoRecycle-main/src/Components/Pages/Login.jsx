@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
+import { LoginStatee } from "../../Context/LoginState";
 
 const Login = () => {
+  const { setLoginState } = useContext(LoginStatee);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -24,6 +26,7 @@ const Login = () => {
           formData
         );
         toast.success("User logged in successfully!");
+        setLoginState(true);
         setFormData({ name: "", email: "", password: "" });
       } catch (err) {
         console.log(err);

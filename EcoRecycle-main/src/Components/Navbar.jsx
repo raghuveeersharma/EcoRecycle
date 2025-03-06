@@ -1,14 +1,24 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { Link } from "react-router-dom"; // Import Link from react-router-dom
 import { GiHamburgerMenu } from "react-icons/gi";
 import { ImCross } from "react-icons/im";
 import logo from ".././assets/EcoLogo.png";
+import { LoginStatee } from "../Context/LoginState";
+import toast, { Toaster } from "react-hot-toast";
 
 const Navbar = () => {
+  const { LoginState, setLoginState } = useContext(LoginStatee);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleLogout = () => {
+    setLoginState(false);
+    setIsMenuOpen(false);
+    toast.success("User logged out successfully!");
+  };
 
   return (
     <header className="bg-[#f0f8ff] py-4 sticky top-0 z-50">
+      <Toaster />
       <div className="container mx-auto px-4 flex justify-between items-center">
         {/* Logo */}
         <div className="logo">
@@ -56,13 +66,26 @@ const Navbar = () => {
           >
             Signup
           </Link>
-          <Link
+          {/* <Link
             to="/login"
             className="text-[#1D4C6C] text-lg hover:text-[#1D916E] transition-colors duration-300"
             onClick={() => setIsMenuOpen(false)}
           >
             Login
-          </Link>
+          </Link> */}
+          <button
+            disabled={!LoginState}
+            className={`text-[#1D4C6C] w-20 rounded text-lg ${
+              LoginState
+                ? `bg-red-500 text-white`
+                : `bg-gray-300 text-black cursor-not-allowed`
+            } transition-colors duration-300 text-center `}
+            onClick={() => {
+              handleLogout();
+            }}
+          >
+            Logout
+          </button>
         </nav>
 
         {/* Mobile Menu Button */}
@@ -104,20 +127,30 @@ const Navbar = () => {
             >
               Contact
             </Link>
-            <Link
+            {/* <Link
               to="/login"
               className="text-[#1D4C6C] text-lg hover:text-[#1D916E] transition-colors duration-300 text-center"
               onClick={() => setIsMenuOpen(false)}
             >
               Login
-            </Link>
+            </Link> */}
             <Link
               to="/Signup"
               className="text-[#1D4C6C] text-lg hover:text-[#1D916E] transition-colors duration-300 text-center"
-              onClick={() => setIsMenuOpen(false)}
+              onClick={() => setLoginState(false)}
             >
               Signup
             </Link>
+            <button
+              className={`text-[#1D4C6C] w-20 mx-auto rounded text-lg ${
+                LoginState ? `bg-red-500 text-white` : `bg-gray-300 text-black`
+              } transition-colors duration-300 text-center `}
+              onClick={() => {
+                handleLogout();
+              }}
+            >
+              Logout
+            </button>
           </nav>
         )}
       </div>

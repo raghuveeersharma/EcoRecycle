@@ -1,8 +1,11 @@
-import React, { useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { FaRecycle, FaMapMarkerAlt, FaUpload } from "react-icons/fa";
 import UploadGuidelines from "../UploadGuidelines";
+import { LoginStatee } from "../../Context/LoginState";
+import Login from "./Login";
 
 const Services = () => {
+  const { LoginState } = useContext(LoginStatee);
   const [image, setImage] = useState(null);
   const [recyclable, setRecyclable] = useState(null);
   const [store, setStore] = useState(null);
@@ -30,7 +33,14 @@ const Services = () => {
     setStore("Recycling Center #123, Main Street, City");
   };
 
-  return (
+  return !LoginState ? (
+    <div className=" flex flex-col items-center justify-center min-h-screen bg-gray-50 overflow-x-hidden">
+      <h1 className="text-2xl pt-7 sm:w-2xl w-72 text-center">
+        For using this service you need to login.
+      </h1>
+      <Login />
+    </div>
+  ) : (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
       <section className="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl text-center">
         <h1 className="text-4xl font-bold text-[#1D4C6C] mb-4 flex items-center justify-center gap-2">
