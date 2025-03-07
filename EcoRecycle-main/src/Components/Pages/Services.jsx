@@ -3,36 +3,10 @@ import { FaRecycle, FaMapMarkerAlt, FaUpload } from "react-icons/fa";
 import UploadGuidelines from "../UploadGuidelines";
 import { LoginStatee } from "../../Context/LoginState";
 import Login from "./Login";
+import ObjectDetection from "../ObjectDetection";
 
 const Services = () => {
   const { LoginState } = useContext(LoginStatee);
-  const [image, setImage] = useState(null);
-  const [recyclable, setRecyclable] = useState(null);
-  const [store, setStore] = useState(null);
-
-  // Handle file selection
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    setImage(URL.createObjectURL(file));
-    checkRecyclableMaterial(file);
-  };
-
-  // Mock function to check if material is recyclable
-  const checkRecyclableMaterial = (file) => {
-    if (file.type === "image/jpeg" || file.type === "image/png") {
-      setRecyclable(true);
-      fetchNearestStore();
-    } else {
-      setRecyclable(false);
-      setStore(null);
-    }
-  };
-
-  // Mock function to fetch nearest recycling store
-  const fetchNearestStore = () => {
-    setStore("Recycling Center #123, Main Street, City");
-  };
-
   return !LoginState ? (
     <div className=" flex flex-col items-center justify-center min-h-screen bg-gray-50 overflow-x-hidden">
       <h1 className="text-2xl pt-7 sm:w-2xl w-72 text-center">
@@ -51,59 +25,9 @@ const Services = () => {
           and guide you to the nearest recycling center.
         </p>
 
-        <div className="mb-6 flex flex-col items-center">
-          <label
-            htmlFor="image-upload"
-            className="cursor-pointer flex items-center gap-2 bg-[#1D4C6C] text-white px-4 py-2 rounded-lg shadow-md hover:bg-[#163A53]"
-          >
-            <FaUpload /> Upload Material Image
-          </label>
-          <input
-            type="file"
-            id="image-upload"
-            onChange={handleFileChange}
-            accept="image/*"
-            className="hidden"
-          />
+        <div>
+          <ObjectDetection />
         </div>
-
-        {image && (
-          <div className="mb-6">
-            <h3 className="text-xl font-semibold">Uploaded Image</h3>
-            <img
-              src={image}
-              alt="Material"
-              className="w-64 h-64 mt-2 rounded-lg shadow-md border border-gray-300"
-            />
-          </div>
-        )}
-
-        {recyclable !== null && (
-          <div className="mb-5">
-            <h3 className="text-xl font-semibold">Recyclable Status:</h3>
-            <p
-              className={`text-lg font-medium ${
-                recyclable ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              {recyclable
-                ? "This material is recyclable!"
-                : "This material is not recyclable."}
-            </p>
-          </div>
-        )}
-
-        {store && recyclable && (
-          <div className="bg-[#1D4C6C] p-4 rounded-lg text-white text-lg mt-5 flex items-center gap-2">
-            <FaMapMarkerAlt className="text-2xl" />
-            <div>
-              <h3 className="text-xl font-semibold">
-                Nearest Recycling Store:
-              </h3>
-              <p>{store}</p>
-            </div>
-          </div>
-        )}
       </section>
       <div className="mt-6">
         <UploadGuidelines />
