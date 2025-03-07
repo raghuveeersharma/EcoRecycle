@@ -47,6 +47,48 @@ const About = () => {
             </ul>
           </div>
         </div>
+
+        {/* Additional Section: Why Choose Us */}
+        <div className="max-w-6xl mx-auto mt-12 p-6 bg-white shadow-lg rounded-lg">
+          <h2 className="text-3xl font-bold text-center mb-5">
+            Why Choose Ecorecycle?
+          </h2>
+          <p className="text-lg text-center mb-5 leading-relaxed">
+            Ecorecycle is more than just a recycling initiative. We are a
+            movement dedicated to creating a cleaner and more sustainable world.
+            Here’s what sets us apart:
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="p-4 border-l-4 border-green-600">
+              <h3 className="text-xl font-semibold">Community Driven</h3>
+              <p className="text-base leading-6">
+                We work with communities to spread awareness and create a
+                collective impact.
+              </p>
+            </div>
+            <div className="p-4 border-l-4 border-green-600">
+              <h3 className="text-xl font-semibold">Eco-Friendly Solutions</h3>
+              <p className="text-base leading-6">
+                We focus on innovative and practical waste management
+                techniques.
+              </p>
+            </div>
+            <div className="p-4 border-l-4 border-green-600">
+              <h3 className="text-xl font-semibold">Reliable & Transparent</h3>
+              <p className="text-base leading-6">
+                We ensure all recycling processes are traceable and
+                environmentally friendly.
+              </p>
+            </div>
+            <div className="p-4 border-l-4 border-green-600">
+              <h3 className="text-xl font-semibold">Sustainable Future</h3>
+              <p className="text-base leading-6">
+                Our efforts are focused on long-term sustainability for future
+                generations.
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   );
