@@ -7,9 +7,9 @@ import MapComponent from "./MapComponent";
 export default function ObjectDetection() {
   const [image, setImage] = useState(null);
   const [detectedObjects, setDetectedObjects] = useState([]);
-  const [recycleCenters, setRecycleCenters] = useState([]);
   const [recyclableObjects, setRecyclableObjects] = useState([]);
   const [userLocation, setUserLocation] = useState([22.7179, 75.8333]);
+  const [recycleCenters, setRecycleCenters] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const imageRef = useRef(null);
@@ -118,37 +118,13 @@ export default function ObjectDetection() {
       .catch((error) => console.error("Error fetching locations:", error));
   }, []);
 
-  // const getLocation = () => {
-  //   navigator.geolocation.getCurrentPosition(
-  //     async (position) => {
-  //       const { latitude, longitude } = position.coords;
-
-  //       console.log("📍 User Location:", latitude, longitude); // Debugging
-
-  //       try {
-  //         const response = await axios.get("http://localhost:5000/location", {
-  //           params: { lat: latitude, lon: longitude },
-  //         });
-
-  //         console.log("✅ Recycling Centers:", response.data); // Debugging
-  //         setUserLocation([latitude, longitude]);
-  //         response.data?.length > 0 && setRecycleCenters(response.data);
-  //         // setRecycleCenters(response.data);
-  //       } catch (error) {
-  //         console.error(
-  //           "❌ Error fetching recycling centers:",
-  //           error.response?.data || error.message
-  //         );
-  //       }
-  //     },
-  //     (error) => console.error("❌ Geolocation Error:", error.message)
-  //   );
-  // };
-
   const getLocation = async () => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const { latitude, longitude } = position.coords;
+        // const { latitude, longitude } = position.coords;
+        const latitude = 22.7196;
+        const longitude = 75.8577;
+        console.log("User Location:", latitude, longitude);
 
         try {
           console.log("Fetching recycling centers...");
@@ -158,21 +134,28 @@ export default function ObjectDetection() {
 
           console.log("API Response:", response.data);
 
-          // Ensure response contains valid locations
-          if (Array.isArray(response.data) && response.data.length > 0) {
-            const filteredData = response.data.filter(
-              (place) => place.lat && place.lon
-            );
+          // Extract relevant data
+          const filteredData = response.data
+            .filter((place) => place.geometry?.location && place.name) // Ensure valid location and name
+            .map((place) => ({
+              name: place.name,
+              location: [
+                place.geometry.location.lat,
+                place.geometry.location.lng,
+              ],
+            }));
 
-            if (filteredData.length === 0) {
-              console.warn("No valid recycling centers found.");
-              return;
-            }
-
-            setRecycleCenters(filteredData);
-          } else {
-            console.warn("No recycling centers found.");
+          if (filteredData.length === 0) {
+            console.warn("No valid recycling centers found.");
+            return;
           }
+
+          console.log("Filtered Recycling Centers:", filteredData);
+
+          setUserLocation([latitude, longitude]); // Set user location
+          setRecycleCenters(filteredData); // Set extracted data
+
+          console.log("Recycle Centers:", recycleCenters);
         } catch (error) {
           console.error(
             "Error fetching recycling centers:",
@@ -183,6 +166,9 @@ export default function ObjectDetection() {
       (error) => console.error("Geolocation Error:", error.message)
     );
   };
+  useEffect(() => {
+    console.log("Updated Recycle Centers:", recycleCenters);
+  }, [recycleCenters]);
 
   return (
     <div className="container mx-auto flex flex-col p-5 overflow-x-hidden">
@@ -262,9 +248,8 @@ export default function ObjectDetection() {
             ))}
           </ul>
           <MapComponent
-            latitude={userLocation[0]}
-            longitude={userLocation[1]}
             locations={recycleCenters}
+            userLocation={userLocation}
           />
         </div>
       )}

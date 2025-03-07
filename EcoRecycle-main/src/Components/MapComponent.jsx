@@ -3,6 +3,21 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import { useMap } from "react-leaflet";
+import { useEffect } from "react";
+
+function MapRefresher({ locations }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (locations.length > 0) {
+      const bounds = locations.map((loc) => loc.location);
+      map.fitBounds(bounds);
+    }
+  }, [locations, map]);
+
+  return null;
+}
 
 // Custom marker icon
 const customIcon = new L.Icon({
@@ -12,52 +27,60 @@ const customIcon = new L.Icon({
   iconAnchor: [12, 41],
 });
 
-export default function MapComponent({ point, locations }) {
-  // Fallback center location (Indore, India) if latitude & longitude are undefined
+export default function MapComponent({ userLocation, locations = [] }) {
+  // Default center (Indore, India)
   const defaultLat = 22.7196;
-  const defaultLng = 75.8577;
+  const defaultLon = 75.8577;
 
-  const isValidLatLng = (lat, lng) =>
-    lat !== undefined && lng !== undefined && !isNaN(lat) && !isNaN(lng);
+  const isValidLatLon = (lat, lon) =>
+    typeof lat === "number" &&
+    typeof lon === "number" &&
+    !isNaN(lat) &&
+    !isNaN(lon);
 
-  const userLat = point?.lat ?? defaultLat;
-  const userLng = point?.lng ?? defaultLng;
+  // Use user's location if valid, otherwise default
+  const [latitude, longitude] = isValidLatLon(...userLocation)
+    ? userLocation
+    : [defaultLat, defaultLon];
 
   return (
-    <div style={{ height: "500px", width: "100%" }}>
-      {/* Render only if valid coordinates exist */}
-      {isValidLatLng(userLat, userLng) ? (
-        <MapContainer
-          center={[userLat, userLng]}
-          zoom={13}
-          style={{ height: "100%", width: "100%" }}
-        >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          />
+    <div
+      style={{ height: "500px", width: "100%", border: "2px solid #1D4C6C" }}
+    >
+      <MapContainer
+        center={[latitude, longitude]}
+        zoom={13}
+        style={{ height: "100%", width: "100%" }}
+      >
+        <MapRefresher locations={locations} />
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
 
-          {/* User's Location Marker */}
-          <Marker position={[userLat, userLng]} icon={customIcon}>
+        {/* User's Location Marker */}
+        {isValidLatLon(latitude, longitude) && (
+          <Marker position={[latitude, longitude]} icon={customIcon}>
             <Popup>📍 Your Location</Popup>
           </Marker>
+        )}
 
-          {/* Recycling Centers Markers */}
-          {locations
-            .filter((loc) => isValidLatLng(loc.lat, loc.lng)) // Filter out invalid locations
-            .map((location, index) => (
+        {/* Recycling Centers Markers */}
+        {locations?.length > 0 &&
+          locations
+            .filter((loc) =>
+              isValidLatLon(loc.location?.[0], loc.location?.[1])
+            )
+            .map((loc, index) => (
               <Marker
                 key={index}
-                position={[location.lat, location.lng]}
+                position={[loc.location[0], loc.location[1]]}
                 icon={customIcon}
               >
-                <Popup>{location.name || "Recycling Center"}</Popup>
+                <Popup>{loc.name || "Recycling Center"}</Popup>
               </Marker>
             ))}
-        </MapContainer>
-      ) : (
-        <p>Loading map or invalid location data...</p>
-      )}
+      </MapContainer>
     </div>
   );
 }
