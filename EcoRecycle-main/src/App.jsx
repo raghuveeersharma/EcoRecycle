@@ -11,6 +11,7 @@ import Login from "./Components/Pages/Login";
 import Footer from "./Components/Footer";
 import Signup from "./Components/Pages/Signup";
 import OTP from "./Components/Pages/OTP";
+import ObjectDetection from "./Components/ObjectDetection";
 
 // Pages (for demonstration)
 
@@ -26,6 +27,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/Signup" element={<Signup />} />
         <Route path="/otp" element={<OTP />} />
+        <Route path="/object" element={<ObjectDetection />} />
       </Routes>
       <Footer />
     </Router>
