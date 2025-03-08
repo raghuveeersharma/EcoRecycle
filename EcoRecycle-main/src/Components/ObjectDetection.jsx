@@ -87,36 +87,6 @@ export default function ObjectDetection() {
 
     setLoading(false); // Hide loading state
   };
-  useEffect(() => {
-    fetch("/api/recycling-centers") // Ensure this API call is correct
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("Raw API response:", data);
-
-        if (Array.isArray(data) && data.length > 0) {
-          // Map and filter valid locations with correct lat/lng extraction
-          const validLocations = data
-            .filter(
-              (loc) =>
-                loc.geometry?.location?.lat && loc.geometry?.location?.lng
-            )
-            .map((loc) => ({
-              lat: loc.geometry.location.lat,
-              lon: loc.geometry.location.lng, // Convert "lng" to "lon" to match your code
-              name: loc.name || "Recycling Center",
-            }));
-
-          if (validLocations.length === 0) {
-            console.warn("No valid recycling centers found.");
-          }
-
-          setRecycleCenters(validLocations);
-        } else {
-          console.warn("No recycling centers data received.");
-        }
-      })
-      .catch((error) => console.error("Error fetching locations:", error));
-  }, []);
 
   const getLocation = async () => {
     navigator.geolocation.getCurrentPosition(
