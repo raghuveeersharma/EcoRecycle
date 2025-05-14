@@ -8,7 +8,7 @@ import routerL from "./Routes/locationRoutes.js";
 const app = express();
 app.use(
   cors({
-    origin: "https://eco-recycle-rho.vercel.app/", // replace with actual origin
+    origin: "https://eco-recycle-rho.vercel.app", // replace with actual origin
     credentials: true, // if you're using cookies or sessions
   })
 );
