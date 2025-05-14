@@ -6,10 +6,22 @@ import cors from "cors";
 import routerL from "./Routes/locationRoutes.js";
 
 const app = express();
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://eco-recycle-rho.vercel.app",
+  "https://book-store-web-flame.vercel.app",
+];
+
 app.use(
   cors({
-    origin: "https://eco-recycle-rho.vercel.app", // replace with actual origin
-    credentials: true, // if you're using cookies or sessions
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
   })
 );
 app.use(express.urlencoded({ extended: true }));
