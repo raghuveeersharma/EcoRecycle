@@ -1,4 +1,3 @@
-import React from "react";
 import { useForm, Controller } from "react-hook-form";
 import axios from "axios";
 import { Link } from "react-router-dom";
@@ -13,7 +12,10 @@ const Signup = () => {
 
   const onSubmit = async (data) => {
     try {
-      const res = await axios.post("http://localhost:5000/user/register", data);
+      const res = await axios.post(
+        `https://bookstoreweb-1.onrender.com/user/register`,
+        data
+      );
       console.log(res.data);
       reset();
       toast.success("User registered successfully!");

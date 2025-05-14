@@ -91,15 +91,13 @@ export default function ObjectDetection() {
   const getLocation = async () => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        // const { latitude, longitude } = position.coords;
-        const latitude = 22.7196;
-        const longitude = 75.8577;
+        const { latitude, longitude } = position.coords;
         console.log("User Location:", latitude, longitude);
 
         try {
           console.log("Fetching recycling centers...");
           const response = await axios.get(
-            `http://localhost:5000/location?lat=${latitude}&lon=${longitude}`
+            `https://bookstoreweb-1.onrender.com/location?lat=${latitude}&lon=${longitude}`
           );
 
           console.log("API Response:", response.data);

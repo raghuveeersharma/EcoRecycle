@@ -22,7 +22,7 @@ const Login = () => {
     if (formData.email && formData.password) {
       try {
         const res = await axios.post(
-          "http://localhost:5000/user/login",
+          `https://bookstoreweb-1.onrender.com/user/login`,
           formData
         );
         toast.success("User logged in successfully!");
@@ -40,7 +40,9 @@ const Login = () => {
   const sendOTP = async () => {
     try {
       <NavLink to="/otp" />;
-      await axios.post("http://localhost:5000/user/sendOTP", { email });
+      await axios.post(`https://bookstoreweb-1.onrender.com/user/sendOTP`, {
+        email,
+      });
       toast.success("OTP sent to your email!");
     } catch (error) {
       toast.error("Failed to send OTP");

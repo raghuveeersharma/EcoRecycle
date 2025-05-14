@@ -1,5 +1,5 @@
-import React, { useContext, useEffect, useState } from "react";
-import { FaRecycle, FaMapMarkerAlt, FaUpload } from "react-icons/fa";
+import { useContext } from "react";
+import { FaRecycle } from "react-icons/fa";
 import UploadGuidelines from "../UploadGuidelines";
 import { LoginStatee } from "../../Context/LoginState";
 import Login from "./Login";

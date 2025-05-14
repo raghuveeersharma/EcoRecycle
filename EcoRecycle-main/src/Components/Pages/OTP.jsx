@@ -10,11 +10,14 @@ const OTP = () => {
 
   const verifyOTP = async () => {
     try {
-      await axios.post("http://localhost:5000/api/auth/verify-otp", {
-        email,
-        otp,
-        newPassword,
-      });
+      await axios.post(
+        `https://bookstoreweb-1.onrender.com/api/auth/verify-otp`,
+        {
+          email,
+          otp,
+          newPassword,
+        }
+      );
       //   toast.success("Password reset successfully!");
     } catch (error) {
       toast.error("Invalid OTP or expired");
