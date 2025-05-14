@@ -6,7 +6,12 @@ import cors from "cors";
 import routerL from "./Routes/locationRoutes.js";
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://eco-recycle-rho.vercel.app/", // replace with actual origin
+    credentials: true, // if you're using cookies or sessions
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 dotenv.config();
