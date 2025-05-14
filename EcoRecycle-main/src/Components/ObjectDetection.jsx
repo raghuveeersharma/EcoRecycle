@@ -97,7 +97,7 @@ export default function ObjectDetection() {
         try {
           console.log("Fetching recycling centers...");
           const response = await axios.get(
-            `https://bookstoreweb-1.onrender.com/location?lat=${latitude}&lon=${longitude}`
+            `https://ecorecycle-ll8y.onrender.com/location?lat=${latitude}&lon=${longitude}`
           );
 
           console.log("API Response:", response.data);

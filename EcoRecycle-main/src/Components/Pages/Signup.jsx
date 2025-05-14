@@ -13,7 +13,7 @@ const Signup = () => {
   const onSubmit = async (data) => {
     try {
       const res = await axios.post(
-        `https://bookstoreweb-1.onrender.com/user/register`,
+        `https://ecorecycle-ll8y.onrender.com/user/register`,
         data
       );
       console.log(res.data);

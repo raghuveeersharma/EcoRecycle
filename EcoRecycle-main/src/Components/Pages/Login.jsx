@@ -22,7 +22,7 @@ const Login = () => {
     if (formData.email && formData.password) {
       try {
         const res = await axios.post(
-          `https://bookstoreweb-1.onrender.com/user/login`,
+          `https://ecorecycle-ll8y.onrender.com/user/login`,
           formData
         );
         toast.success("User logged in successfully!");
