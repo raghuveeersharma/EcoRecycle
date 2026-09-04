@@ -1,5 +1,7 @@
+@import "tailwindcss";
+
 body {
-  font-family: "Oxanium", serif;
+  font-family: "Oxanium", "Outfit", system-ui, -apple-system, "Segoe UI",
+    sans-serif;
   overflow-x: hidden;
 }
-@import "tailwindcss";

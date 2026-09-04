@@ -1,85 +1,100 @@
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+import { useEffect } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
-import { useMap } from "react-leaflet";
-import { useEffect } from "react";
 
-function MapRefresher({ locations }) {
-  const map = useMap();
+// Default centre: Indore, India — used when no user position is available.
+const DEFAULT_CENTER = [22.7196, 75.8577];
+const SINGLE_POINT_ZOOM = 14;
 
-  useEffect(() => {
-    if (locations.length > 0) {
-      const bounds = locations.map((loc) => loc.location);
-      map.fitBounds(bounds);
-    }
-  }, [locations, map]);
-
-  return null;
-}
-
-// Custom marker icon
 const customIcon = new L.Icon({
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
   iconSize: [25, 41],
   iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
 });
 
-export default function MapComponent({ userLocation, locations = [] }) {
-  // Default center (Indore, India)
-  const defaultLat = 22.7196;
-  const defaultLon = 75.8577;
+const isValidLatLon = (lat, lon) =>
+  Number.isFinite(lat) &&
+  Number.isFinite(lon) &&
+  Math.abs(lat) <= 90 &&
+  Math.abs(lon) <= 180;
 
-  const isValidLatLon = (lat, lon) =>
-    typeof lat === "number" &&
-    typeof lon === "number" &&
-    !isNaN(lat) &&
-    !isNaN(lon);
+/** Keeps the viewport framed around the user and every centre. */
+function MapFramer({ points }) {
+  const map = useMap();
 
-  // Use user's location if valid, otherwise default
-  const [latitude, longitude] = isValidLatLon(...userLocation)
-    ? userLocation
-    : [defaultLat, defaultLon];
+  useEffect(() => {
+    if (points.length === 0) return;
+    if (points.length === 1) {
+      map.setView(points[0], SINGLE_POINT_ZOOM);
+      return;
+    }
+    map.fitBounds(L.latLngBounds(points), {
+      padding: [40, 40],
+      maxZoom: SINGLE_POINT_ZOOM,
+    });
+  }, [points, map]);
+
+  return null;
+}
+
+export default function MapComponent({ userLocation = null, locations = [] }) {
+  const hasUserLocation =
+    Array.isArray(userLocation) && isValidLatLon(userLocation[0], userLocation[1]);
+
+  const center = hasUserLocation ? userLocation : DEFAULT_CENTER;
+
+  const validCentres = locations.filter((loc) =>
+    isValidLatLon(loc.location?.[0], loc.location?.[1])
+  );
+
+  // The user's own marker must be inside the bounds, or it scrolls off-screen.
+  const points = [
+    ...(hasUserLocation ? [userLocation] : []),
+    ...validCentres.map((loc) => loc.location),
+  ];
 
   return (
-    <div
-      style={{ height: "500px", width: "100%", border: "2px solid #1D4C6C" }}
-    >
+    <div className="h-72 w-full border-2 border-[#1D4C6C] sm:h-96 lg:h-[500px]">
       <MapContainer
-        center={[latitude, longitude]}
+        center={center}
         zoom={13}
         style={{ height: "100%", width: "100%" }}
       >
-        <MapRefresher locations={locations} />
+        <MapFramer points={points} />
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
 
-        {/* User's Location Marker */}
-        {isValidLatLon(latitude, longitude) && (
-          <Marker position={[latitude, longitude]} icon={customIcon}>
-            <Popup>📍 Your Location</Popup>
+        {hasUserLocation && (
+          <Marker position={userLocation} icon={customIcon}>
+            <Popup>📍 Your location</Popup>
           </Marker>
         )}
 
-        {/* Recycling Centers Markers */}
-        {locations?.length > 0 &&
-          locations
-            .filter((loc) =>
-              isValidLatLon(loc.location?.[0], loc.location?.[1])
-            )
-            .map((loc, index) => (
-              <Marker
-                key={index}
-                position={[loc.location[0], loc.location[1]]}
-                icon={customIcon}
-              >
-                <Popup>{loc.name || "Recycling Center"}</Popup>
-              </Marker>
-            ))}
+        {validCentres.map((loc) => (
+          <Marker
+            key={loc.id || `${loc.name}-${loc.location.join(",")}`}
+            position={loc.location}
+            icon={customIcon}
+          >
+            <Popup>
+              <strong>{loc.name || "Recycling centre"}</strong>
+              {loc.vicinity && (
+                <>
+                  <br />
+                  {loc.vicinity}
+                </>
+              )}
+            </Popup>
+          </Marker>
+        ))}
       </MapContainer>
     </div>
   );

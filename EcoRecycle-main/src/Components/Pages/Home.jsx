@@ -16,8 +16,11 @@ const Home = () => {
             to="/services"
             className="bg-[#1D4C6C] text-white py-4 px-8 rounded-lg text-lg font-semibold hover:bg-[#4c5e8f] transition-colors duration-300"
           >
-            Learn more
+            Scan an item
           </Link>
+          <p className="mt-3 text-sm text-gray-500">
+            A free account is needed to use the scanner.
+          </p>
         </div>
         <div className="mt-12">
           <RecycleAwarenessCards />

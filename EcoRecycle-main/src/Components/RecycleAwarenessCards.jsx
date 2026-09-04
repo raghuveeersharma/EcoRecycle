@@ -1,4 +1,3 @@
-import React from "react";
 import { FaRecycle, FaTree, FaIndustry, FaGlassMartini } from "react-icons/fa";
 
 const recyclingData = [
