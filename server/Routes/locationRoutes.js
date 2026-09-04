@@ -1,5 +1,10 @@
-import { locationDetection } from "../Controllers/locationController.js";
 import express from "express";
-const routerL = express.Router();
-routerL.get("/location", locationDetection);
-export default routerL;
+import { locationDetection } from "../Controllers/locationController.js";
+import { protect } from "../Middleware/auth.js";
+import { locationLimiter } from "../Middleware/rateLimiters.js";
+
+const locationRouter = express.Router();
+
+locationRouter.get("/", protect, locationLimiter, locationDetection);
+
+export default locationRouter;
