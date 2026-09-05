@@ -11,6 +11,7 @@ npm install
 cp .env.example .env   # then fill in MONGODB_URI and JWT_SECRET
 npm run dev            # nodemon on http://localhost:5000
 npm start              # production
+npm test               # full test suite (no running MongoDB needed)
 ```
 
 `JWT_SECRET` and `MONGODB_URI` are mandatory — the process exits at startup
@@ -45,6 +46,34 @@ Field-level `errors` are only present for 400 validation failures.
 - Everything: 300 requests / 15 min
 - Auth and contact: 10 requests / 15 min (successful requests are not counted)
 - Location: 20 requests / min
+
+Each is overridable via `RATE_LIMIT_GLOBAL_MAX`, `RATE_LIMIT_AUTH_MAX` and
+`RATE_LIMIT_LOCATION_MAX`, which is how the test suite exercises the limiter
+without waiting out a 15-minute window.
+
+## Tests
+
+```bash
+npm test          # run once
+npm run test:watch
+```
+
+`node:test` with `mongodb-memory-server`, so no MongoDB instance is required —
+the first run downloads a `mongod` binary and caches it. The suite starts the
+real Express app on an ephemeral port and drives it over HTTP, so routing,
+middleware, validation and the error handler are all covered end to end. The
+upstream places API is stubbed with `nock`; no test makes a real network call.
+
+| File | Covers |
+|---|---|
+| `tests/auth.test.js` | register, login, `me`, the full OTP reset cycle, legacy `/user/*` aliases |
+| `tests/location.test.js` | auth gate, coordinate validation, response shape, radius caps, caching, upstream failures, API-key safety |
+| `tests/app.test.js` | health, 404 and error envelope, body limits, helmet, CORS, contact form |
+| `tests/rateLimit.test.js` | auth limiter (own app instance with tiny limits) |
+
+`app.js` builds and exports the Express app; `index.js` only validates env,
+connects to MongoDB, listens and handles shutdown. That split is what lets the
+tests mount the app without booting a server.
 
 ## Notes
 

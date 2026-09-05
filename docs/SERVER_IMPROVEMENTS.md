@@ -121,7 +121,7 @@ Audit date: 2026-09-04. Status legend: `[ ]` open · `[x]` done in this pass · 
 
 | # | Finding | Fix | Status |
 |---|---|---|---|
-| S10.1 | `npm test` is the default "no test specified" stub; there are zero tests. | Not implemented in this pass — needs `node:test` + `mongodb-memory-server`, which is a separate chunk of work. | [ ] |
+| S10.1 | `npm test` is the default "no test specified" stub; there are zero tests. | Implemented: 58 tests over `node:test` + `mongodb-memory-server`, driving the real app over HTTP. `app.js` was split out of `index.js` so the app can be mounted without a listener. See [server/README.md](../server/README.md#tests). | [x] |
 | S10.2 | No ESLint / Prettier config for the server; indentation and quoting are inconsistent (`connection =async()=>`). | Not implemented in this pass. | [ ] |
 | S10.3 | No README for the server — no setup, env or route documentation. | Added `server/README.md` with setup and the full route table. | [x] |
 | S10.4 | `.gitignore` is repo-root only and misses `dist/`, `.env.*`, editor and log files; its lines have trailing whitespace. | Rewritten. | [x] |
@@ -146,33 +146,47 @@ Audit date: 2026-09-04. Status legend: `[ ]` open · `[x]` done in this pass · 
 | `Controllers/contactController.js` | Contact form handler |
 | `Routes/contactRoutes.js` | `/api/contact` |
 | `.env.example`, `README.md` | Setup, variables, route table |
+| `app.js` | Builds and exports the Express app; `index.js` now only does env checks, DB connect, listen and shutdown, so tests can mount the app without a listener |
+| `tests/helpers.js` | Test harness: in-memory MongoDB + the real app on an ephemeral port |
+| `tests/auth.test.js` | Register, login, `me`, full OTP reset cycle, legacy aliases (22 tests) |
+| `tests/location.test.js` | Auth gate, coordinates, response shape, radius, cache, upstream failure, key safety (19 tests) |
+| `tests/app.test.js` | Health, error envelope, body limits, helmet, CORS, contact form (14 tests) |
+| `tests/rateLimit.test.js` | Auth limiter, on its own app with tiny limits (3 tests) |
 
 ## Verification performed
 
-- `npm install` — succeeds (146 packages).
-- Every module in the graph imports cleanly (`Config` → `Utils` → `Middleware` →
-  `Models` → `Controllers` → `Routes`), so there are no circular-import or
-  missing-export faults.
-- The routers were mounted into a live Express instance and exercised over HTTP:
+- `npm install` — succeeds.
+- `npm test` — **58 tests, 58 passing** (`node:test` + `mongodb-memory-server`,
+  ~32s, of which 8s is the deliberate upstream-timeout test). No MongoDB
+  instance and no network access are required; the metered places API is
+  stubbed with `nock`, so no test ever calls it for real.
+- The suite drives the real Express app over HTTP on an ephemeral port, so
+  routing, middleware order, validation, rate limiting and the central error
+  handler are all exercised the way they run in production. Coverage by module:
 
-  | Request | Result |
+  | Module | What the tests pin down |
   |---|---|
-  | `GET /api/nope` | `404 {"success":false,"message":"Route GET /api/nope not found"}` |
-  | `GET /api/location?lat=22&lon=75` (no token) | `401 "Please sign in to continue"` |
-  | same with `Bearer garbage` | `401 "Session expired, please sign in again"` |
-  | `POST /api/contact {}` | `400` with per-field `errors` for name, email, message |
-  | `POST /api/contact` with `name:"A"`, `email:"bad"`, `message:"short"` | `400` with the correct three messages |
-  | `POST /api/auth/login {email:"nope",password:""}` | `400` with per-field `errors` |
+  | S2 | helmet headers present and `x-powered-by` gone; a disallowed CORS origin is denied with a 200 and no allow-origin header rather than a 500; 10kb body cap returns 413; malformed JSON is a 4xx |
+  | S2.2 | after N failed logins the limiter returns 429; successful requests are not counted; standard `RateLimit-*` headers, no legacy `X-` ones |
+  | S3 | `/health` reports uptime and DB state; unknown routes 404 in the standard envelope; legacy `/user/*` and `/location` aliases still work |
+  | S4 | email is unique case-insensitively, lower-cased and trimmed; `timestamps` recorded; the stored password is a bcrypt hash, never plaintext, and never leaves the API |
+  | S5 | JWT issued on register, login and reset; missing / malformed / forged tokens and tokens for deleted accounts all 401; wrong password and unknown user return an **identical** 401 message |
+  | S5.8 | full forgot → reset → login cycle; the old password stops working; codes are stored hashed, are single-use, expire, and an unknown email gets a byte-identical response |
+  | S6 | every invalid field reported at once; empty body rejected; undeclared fields (`role`, `isAdmin`) are dropped rather than mass-assigned |
+  | S7 | `lat=0&lon=0` is accepted rather than treated as missing; out-of-range and non-numeric coordinates 400 **before** any upstream call; radius defaults to 5000 and is clamped to 500–25000; a repeat search is served from cache with no second upstream call; upstream 5xx, network error and an 8s timeout all become 502; **the API key appears in neither the logs nor any response** |
+  | S8 | contact form accepts a valid submission, validates name/email/message length, and needs no authentication |
 
-- Validation confirmed to lower-case and trim emails and to drop undeclared
-  body fields (mass-assignment guard).
-- Not verified: anything requiring a live MongoDB or the metered GoMaps API —
-  register/login round-trip, the unique-email index, OTP delivery and the
-  nearby-search cache. These need a manual pass against a real database.
+- Normal startup re-verified after the `app.js` split: boots against a real
+  MongoDB, serves `/health` and `/api/auth/register`, and shuts down cleanly on
+  `SIGTERM` ("SIGTERM received — shutting down" → "Shutdown complete").
+- Still not covered by tests: `Config/dbConnections.js` retry/backoff and the
+  `uncaughtException` path, both of which end in `process.exit` and would need a
+  child-process harness to assert on.
 
 ## Ops actions required after this pass
 
-1. `cd server && npm install` — new dependencies: `helmet`, `express-rate-limit`, `jsonwebtoken`, `nodemon` (dev).
+1. `cd server && npm install` — new dependencies: `helmet`, `express-rate-limit`, `jsonwebtoken`; dev: `nodemon`, `mongodb-memory-server`, `nock`.
 2. Set on Render: `MONGODB_URI` (rename of `MongoDB_URI`), `JWT_SECRET` (long random string), `CORS_ORIGINS`, optionally `SMTP_*`, `BCRYPT_ROUNDS`, `LOG_LEVEL`.
 3. The unique index on `email` (S4.1) will fail to build if the collection already contains duplicate addresses — de-duplicate before deploying.
 4. Frontend must be pointed at the new `/api/*` routes via `VITE_API_URL`; legacy mounts (S3.2) cover the window in between.
+5. `npm test` downloads a `mongod` binary on first run and caches it under `node_modules/`. CI needs either network access for that first run or a warmed cache.
