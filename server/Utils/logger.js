@@ -1,6 +1,7 @@
 import env from "../Config/env.js";
 
-const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
+// "silent" suppresses everything; used by the test suite.
+const LEVELS = { silent: -1, error: 0, warn: 1, info: 2, debug: 3 };
 const threshold = LEVELS[env.LOG_LEVEL] ?? LEVELS.info;
 
 const emit = (level, args) => {

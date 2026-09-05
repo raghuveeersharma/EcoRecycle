@@ -15,6 +15,9 @@ const env = {
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "7d",
   BCRYPT_ROUNDS: Number(process.env.BCRYPT_ROUNDS) || 12,
   LOG_LEVEL: process.env.LOG_LEVEL || "info",
+  RATE_LIMIT_GLOBAL_MAX: Number(process.env.RATE_LIMIT_GLOBAL_MAX) || 300,
+  RATE_LIMIT_AUTH_MAX: Number(process.env.RATE_LIMIT_AUTH_MAX) || 10,
+  RATE_LIMIT_LOCATION_MAX: Number(process.env.RATE_LIMIT_LOCATION_MAX) || 20,
   GOMAPS_PRO_API_KEY: process.env.GOMAPS_PRO_API_KEY,
   CORS_ORIGINS: (
     process.env.CORS_ORIGINS ||
