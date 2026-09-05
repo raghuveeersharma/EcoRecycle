@@ -1,5 +1,12 @@
-import { useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { useEffect, useMemo } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
@@ -27,6 +34,10 @@ const isValidLatLon = (lat, lon) =>
 /** Keeps the viewport framed around the user and every centre. */
 function MapFramer({ points }) {
   const map = useMap();
+  // `points` is a fresh array on every render, so depending on it directly
+  // would re-frame the map each time the parent re-renders — fighting the user
+  // whenever they pan or zoom. Re-frame only when the coordinates change.
+  const key = points.map((point) => point.join(",")).join("|");
 
   useEffect(() => {
     if (points.length === 0) return;
@@ -38,12 +49,36 @@ function MapFramer({ points }) {
       padding: [40, 40],
       maxZoom: SINGLE_POINT_ZOOM,
     });
-  }, [points, map]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, map]);
 
   return null;
 }
 
-export default function MapComponent({ userLocation = null, locations = [] }) {
+/** Lets the visitor correct a bad geolocation fix by clicking the map. */
+function ClickToSetLocation({ onSelect }) {
+  const map = useMapEvents({
+    click: (event) => onSelect([event.latlng.lat, event.latlng.lng]),
+  });
+
+  useEffect(() => {
+    const container = map.getContainer();
+    const previous = container.style.cursor;
+    container.style.cursor = "crosshair";
+    return () => {
+      container.style.cursor = previous;
+    };
+  }, [map]);
+
+  return null;
+}
+
+export default function MapComponent({
+  userLocation = null,
+  locations = [],
+  onSelectLocation = null,
+  userLocationLabel = "📍 Your location",
+}) {
   const hasUserLocation =
     Array.isArray(userLocation) && isValidLatLon(userLocation[0], userLocation[1]);
 
@@ -54,10 +89,14 @@ export default function MapComponent({ userLocation = null, locations = [] }) {
   );
 
   // The user's own marker must be inside the bounds, or it scrolls off-screen.
-  const points = [
-    ...(hasUserLocation ? [userLocation] : []),
-    ...validCentres.map((loc) => loc.location),
-  ];
+  const points = useMemo(
+    () => [
+      ...(hasUserLocation ? [userLocation] : []),
+      ...validCentres.map((loc) => loc.location),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hasUserLocation, userLocation?.join(","), validCentres.map((loc) => loc.location.join(",")).join("|")]
+  );
 
   return (
     <div className="h-72 w-full border-2 border-[#1D4C6C] sm:h-96 lg:h-[500px]">
@@ -67,6 +106,7 @@ export default function MapComponent({ userLocation = null, locations = [] }) {
         style={{ height: "100%", width: "100%" }}
       >
         <MapFramer points={points} />
+        {onSelectLocation && <ClickToSetLocation onSelect={onSelectLocation} />}
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -74,7 +114,7 @@ export default function MapComponent({ userLocation = null, locations = [] }) {
 
         {hasUserLocation && (
           <Marker position={userLocation} icon={customIcon}>
-            <Popup>📍 Your location</Popup>
+            <Popup>{userLocationLabel}</Popup>
           </Marker>
         )}
 

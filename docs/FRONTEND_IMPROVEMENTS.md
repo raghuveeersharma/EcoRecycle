@@ -117,6 +117,7 @@ Audit date: 2026-09-04. Status legend: `[ ]` open · `[x]` done in this pass · 
 | F8.4 | Markers are keyed by array index, so the list re-renders incorrectly when centres change. | Keyed by place id / name+coords. | [x] |
 | F8.5 | The 500px height is a hardcoded inline style — it does not adapt on mobile. | Tailwind responsive height. | [x] |
 | F8.6 | No empty state when zero centres come back. | Caller renders an explicit "none found nearby" message. | [x] |
+| F8.7 | `MapFramer`'s effect depends on a `points` array rebuilt on every render, so the map re-frames on every parent re-render — fighting the user whenever they pan or zoom. Harmless while the map was read-only; not once it became click-to-set. | The effect keys off the coordinates themselves, so it re-frames only when they actually change. | [x] |
 
 ## F9 — Accessibility
 
