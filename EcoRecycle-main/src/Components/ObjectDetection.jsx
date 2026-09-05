@@ -7,6 +7,14 @@ import { VlmClient, createProgressTracker } from "../lib/vlmClient";
 import MapComponent from "./MapComponent";
 import Spinner from "./Spinner";
 
+// A GPS or Wi-Fi fix is accurate to tens or hundreds of metres. Anything this
+// vague is an IP-address lookup, which resolves to wherever the visitor's ISP
+// is registered — routinely the state capital rather than their own city.
+const COARSE_FIX_METRES = 5000;
+
+const formatAccuracy = (metres) =>
+  metres >= 1000 ? `${Math.round(metres / 1000)} km` : `${Math.round(metres)} m`;
+
 export default function ObjectDetection() {
   const [imageUrl, setImageUrl] = useState(null);
   const [result, setResult] = useState(null);
@@ -23,6 +31,9 @@ export default function ObjectDetection() {
   const [detectError, setDetectError] = useState(null);
 
   const [userLocation, setUserLocation] = useState(null);
+  const [locationAccuracy, setLocationAccuracy] = useState(null);
+  const [isManualLocation, setIsManualLocation] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
   const [centres, setCentres] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState(null);
@@ -132,9 +143,35 @@ export default function ObjectDetection() {
     }
   };
 
+  const searchCentres = async (lat, lon) => {
+    setIsLocating(true);
+    setLocationError(null);
+    try {
+      const { data } = await api.get("/location", {
+        params: { lat, lon },
+      });
+      setCentres(
+        data.data.map((centre) => ({
+          id: centre.id,
+          name: centre.name,
+          vicinity: centre.vicinity,
+          location: [centre.location.lat, centre.location.lng],
+        }))
+      );
+    } catch (err) {
+      setCentres([]);
+      setLocationError(
+        getErrorMessage(err, "Could not load nearby recycling centres")
+      );
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
   const findCentres = () => {
     if (!navigator.geolocation) {
       setLocationError("Your browser does not support location lookup.");
+      setShowPicker(true);
       return;
     }
 
@@ -142,44 +179,41 @@ export default function ObjectDetection() {
     setLocationError(null);
 
     navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
-        const { latitude, longitude } = coords;
-        setUserLocation([latitude, longitude]);
-
-        try {
-          const { data } = await api.get("/location", {
-            params: { lat: latitude, lon: longitude },
-          });
-          setCentres(
-            data.data.map((centre) => ({
-              id: centre.id,
-              name: centre.name,
-              vicinity: centre.vicinity,
-              location: [centre.location.lat, centre.location.lng],
-            }))
-          );
-        } catch (err) {
-          setCentres([]);
-          setLocationError(
-            getErrorMessage(err, "Could not load nearby recycling centres")
-          );
-        } finally {
-          setIsLocating(false);
-        }
+      ({ coords }) => {
+        setUserLocation([coords.latitude, coords.longitude]);
+        // Keep the reported accuracy: it is the only way to tell a real fix
+        // from an internet-provider guess, and the two differ by kilometres.
+        setLocationAccuracy(coords.accuracy);
+        setIsManualLocation(false);
+        searchCentres(coords.latitude, coords.longitude);
       },
       (err) => {
         setIsLocating(false);
+        setShowPicker(true);
         setLocationError(
           err.code === err.PERMISSION_DENIED
-            ? "Location permission was denied. Enable it to find nearby centres."
-            : "Could not determine your location. Please try again."
+            ? "Location permission was denied. Enable it, or set your location on the map below."
+            : "Could not determine your location. Set it on the map below instead."
         );
       },
-      { timeout: 10000 }
+      // Without enableHighAccuracy the browser is free to answer from whatever
+      // is cheapest, which on a desktop means an IP lookup that resolves to the
+      // ISP's registered city rather than yours.
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     );
   };
 
+  const handlePickLocation = ([lat, lon]) => {
+    setUserLocation([lat, lon]);
+    setLocationAccuracy(null);
+    setIsManualLocation(true);
+    setShowPicker(true);
+    searchCentres(lat, lon);
+  };
+
   const material = result?.material ? materialInfo(result.material) : null;
+  const isCoarseFix =
+    locationAccuracy !== null && locationAccuracy > COARSE_FIX_METRES;
 
   const detectLabel = () => {
     if (isDetecting) return "Analysing…";
@@ -390,24 +424,58 @@ export default function ObjectDetection() {
         </p>
       )}
 
-      {centres !== null && !isLocating && (
+      {isCoarseFix && (
+        <p className="rounded bg-amber-50 p-3 text-left text-sm text-amber-900">
+          Your browser placed you to within about{" "}
+          <strong>{formatAccuracy(locationAccuracy)}</strong>. A fix that vague
+          comes from your internet provider, not from GPS, and it often lands on
+          a different city entirely — so these results may be for the wrong
+          place. Click your actual location on the map to search there instead.
+        </p>
+      )}
+
+      {isManualLocation && (
+        <p className="text-left text-sm text-gray-600">
+          Searching around the point you picked on the map.
+        </p>
+      )}
+
+      {(centres !== null || showPicker) && !isLocating && (
         <div className="mt-2 text-left">
-          <h2 className="mb-2 text-lg font-semibold">Nearest recycling centres</h2>
-          {centres.length === 0 ? (
-            <p className="text-gray-600">
-              No recycling centres were found within 5&nbsp;km of you.
-            </p>
-          ) : (
-            <ul className="mb-4">
-              {centres.map((centre) => (
-                <li key={centre.id}>
-                  ♻️ {centre.name}
-                  {centre.vicinity ? ` — ${centre.vicinity}` : ""}
-                </li>
-              ))}
-            </ul>
+          {centres !== null && (
+            <>
+              <h2 className="mb-2 text-lg font-semibold">
+                Nearest recycling centres
+              </h2>
+              {centres.length === 0 ? (
+                <p className="text-gray-600">
+                  No recycling centres were found within 5&nbsp;km of that point.
+                </p>
+              ) : (
+                <ul className="mb-4">
+                  {centres.map((centre) => (
+                    <li key={centre.id}>
+                      ♻️ {centre.name}
+                      {centre.vicinity ? ` — ${centre.vicinity}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
-          <MapComponent locations={centres} userLocation={userLocation} />
+
+          <p className="mb-2 text-sm text-gray-600">
+            Wrong place? Click anywhere on the map to set your location and
+            search again.
+          </p>
+          <MapComponent
+            locations={centres ?? []}
+            userLocation={userLocation}
+            onSelectLocation={handlePickLocation}
+            userLocationLabel={
+              isManualLocation ? "📍 Location you set" : "📍 Your location"
+            }
+          />
         </div>
       )}
     </div>
