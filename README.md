@@ -49,7 +49,7 @@ of known issues and the fixes applied to each side of the codebase.
 | HTTP | Axios (single instance with auth + error interceptors) |
 | Notifications | react-hot-toast |
 | Maps | Leaflet + react-leaflet |
-| On-device ML | TensorFlow.js + the COCO-SSD object detection model |
+| On-device ML | Transformers.js running SmolVLM-256M-Instruct in a Web Worker |
 | Icons | react-icons |
 | Tooling | ESLint, Vite dev server / build |
 | Hosting | Vercel |

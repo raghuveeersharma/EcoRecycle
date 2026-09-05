@@ -17,8 +17,9 @@ import Signup from "./Components/Pages/Signup";
 import OTP from "./Components/Pages/OTP";
 import NotFound from "./Components/Pages/NotFound";
 
-// TensorFlow.js and the COCO-SSD weights are several megabytes; keeping the
-// Services page lazy stops every visitor from downloading them.
+// Transformers.js is several megabytes of JavaScript before any model weights
+// are fetched; keeping the Services page lazy stops every visitor from
+// downloading it.
 const Services = lazy(() => import("./Components/Pages/Services"));
 
 const PageFallback = () => (

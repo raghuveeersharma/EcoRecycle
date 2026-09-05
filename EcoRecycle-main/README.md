@@ -17,8 +17,9 @@ the audit behind this codebase's current state.
   centralised error handling
 - **react-hot-toast** for notifications
 - **Leaflet / react-leaflet** for the recycling-centre map
-- **TensorFlow.js + COCO-SSD**, lazy-loaded only on the scanner route, for
-  on-device object detection
+- **Transformers.js + SmolVLM-256M-Instruct**, lazy-loaded only on the
+  scanner route and run in a Web Worker (WebGPU, with a WASM fallback), for
+  on-device item identification — photos never leave the browser
 
 ## Setup
 
@@ -39,6 +40,7 @@ reset, the recycling-centre lookup, and the contact form to work.
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Preview the production build locally |
 | `npm run lint` | ESLint over the project |
+| `npm test` | `node --test` over the detector's classifier and prompt-parsing logic |
 
 ## Structure
 
@@ -50,6 +52,12 @@ src/
 │   ├── ObjectDetection.jsx, MapComponent.jsx
 │   ├── ProtectedRoute.jsx, ErrorBoundary.jsx, ScrollToTop.jsx, Spinner.jsx
 ├── Context/             # Auth context, hook, and provider
-├── lib/api.js           # Shared axios instance
+├── lib/
+│   ├── api.js           # Shared axios instance
+│   ├── detection.js     # Detector prompts and answer parsing
+│   ├── materials.js     # Material vocabulary, guidance, and text classifier
+│   ├── imagePrep.js     # Canvas resize to the model's input size
+│   └── vlmClient.js     # Main-thread wrapper around the inference worker
+├── workers/vlm.worker.js  # SmolVLM loading and generation, off the main thread
 ├── App.jsx, main.jsx
 ```

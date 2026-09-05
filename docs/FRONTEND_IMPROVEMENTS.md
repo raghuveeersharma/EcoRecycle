@@ -11,7 +11,7 @@ Audit date: 2026-09-04. Status legend: `[ ]` open · `[x]` done in this pass · 
 | F4 | API layer | 5 | High |
 | F5 | Broken code / runtime errors | 7 | Critical |
 | F6 | Forms & validation | 6 | High |
-| F7 | Object detection (TensorFlow) | 9 | High |
+| F7 | Object detection | 9 | High |
 | F8 | Map component | 6 | Medium |
 | F9 | Accessibility | 7 | Medium |
 | F10 | UX, error handling & performance | 7 | Medium |
@@ -88,17 +88,22 @@ Audit date: 2026-09-04. Status legend: `[ ]` open · `[x]` done in this pass · 
 | F6.5 | Signup uses `Controller` for three plain uncontrolled inputs — needless indirection and re-renders. | Switched to `register`. | [x] |
 | F6.6 | The Contact form sets a "sent successfully!" banner **without sending anything anywhere**. | Wired to the new `POST /api/contact`, with email field, validation and real success/error state. | [x] |
 
-## F7 — Object detection (TensorFlow)
+## F7 — Object detection
+
+> COCO-SSD has since been replaced by SmolVLM running in-browser — see
+> [OBJECT_DETECTION_TODO.md](./OBJECT_DETECTION_TODO.md). The rows below were
+> written against the TensorFlow.js detector; each has been re-checked against
+> the replacement, and F7.6 / F7.7 changed shape as a result.
 
 | # | Finding | Fix | Status |
 |---|---|---|---|
-| F7.1 | `@tensorflow/tfjs` + `coco-ssd` load on mount of a component that is in the main bundle — several MB of JS shipped to every visitor including the home page. | Route-level `React.lazy` + `Suspense`, so the model code is a separate chunk. | [x] |
-| F7.2 | `cocoSsd.load()` has no error handling — if the CDN weights fail, the console shows nothing useful and the button silently does nothing forever. | try/catch, error state, retry affordance. | [x] |
+| F7.1 | `@tensorflow/tfjs` + `coco-ssd` load on mount of a component that is in the main bundle — several MB of JS shipped to every visitor including the home page. | Route-level `React.lazy` + `Suspense`, so the model code is a separate chunk. Still holds: Transformers.js is in the lazy `Services` chunk, and the weights are only fetched once an image is chosen. | [x] |
+| F7.2 | `cocoSsd.load()` has no error handling — if the CDN weights fail, the console shows nothing useful and the button silently does nothing forever. | try/catch, error state, retry affordance. Now also covers a worker that dies mid-load, which would otherwise leave every pending promise unsettled. | [x] |
 | F7.3 | The Detect button is enabled before the model finishes loading and is not disabled while detecting. | Disabled until the model is ready and while a detection is running; status line shows which. | [x] |
 | F7.4 | `URL.createObjectURL` is called on every upload and **never revoked** — one leaked blob per image. | Revoked on replace and on unmount. | [x] |
 | F7.5 | `detectObjects` has no try/catch; a failed inference leaves `loading` stuck at `true`. | Wrapped with `finally`. | [x] |
-| F7.6 | Predictions are used regardless of confidence, so a 12%-confidence "bottle" is reported as fact. | Filter at a 0.5 score threshold and show the score. | [x] |
-| F7.7 | `RECYCLABLE_MATERIALS` is redefined on every render; matching produces duplicates and misreports category ("bottle" is listed under both plastic and glass, first match wins). | Hoisted to module scope, deduplicated, and each item is reported with its matched category. | [x] |
+| F7.6 | Predictions are used regardless of confidence, so a 12%-confidence "bottle" is reported as fact. | ~~0.5 score threshold~~ — SmolVLM emits no confidence score, so there is nothing to threshold. Replaced with honest framing: results are shown as "Looks like…", a material read from the object's name rather than stated by the model is labelled as the weaker guess it is, and the model's raw answer is one click away. | [x] |
+| F7.7 | `RECYCLABLE_MATERIALS` is redefined on every render; matching produces duplicates and misreports category ("bottle" is listed under both plastic and glass, first match wins). | Moved to [materials.js](../EcoRecycle-main/src/lib/materials.js) and re-cut for open-vocabulary text: explicit material words beat object names, ambiguous names like "bottle" resolve to *unknown* instead of to whichever list mentioned them first, and text naming several materials at once is refused rather than resolved to the first. Covered by unit tests. | [x] |
 | F7.8 | The recycling-centres list and map are gated on `recyclableObjects.length > 0`, so fetching your location before detecting anything appears to do nothing. | Gated on whether centres were actually fetched. | [x] |
 | F7.9 | Geolocation failure and denial are only `console.error`; there is no loading state while the API call runs, and `console.log(recycleCenters)` right after `setState` prints the stale value. | User-visible loading and error states; debug logging removed. | [x] |
 
@@ -164,6 +169,12 @@ Audit date: 2026-09-04. Status legend: `[ ]` open · `[x]` done in this pass · 
 | `src/Components/ScrollToTop.jsx` | Scroll restoration on navigation |
 | `src/Components/Spinner.jsx` | Shared loading indicator |
 | `src/Components/Pages/NotFound.jsx` | 404 page |
+| `src/lib/materials.js` | Material vocabulary, disposal guidance and the free-text → material classifier |
+| `src/lib/detection.js` | The prompts and the parsing of the model's answers, independent of any model runtime |
+| `src/lib/imagePrep.js` | Decodes an upload and draws it to an offscreen canvas at the model's input size |
+| `src/lib/vlmClient.js` | Main-thread wrapper around the inference worker, plus download-progress aggregation |
+| `src/workers/vlm.worker.js` | Loads SmolVLM (WebGPU, WASM fallback) and runs generation off the main thread |
+| `tests/detection.test.js` | `node --test` coverage for the classifier and the prompt/response flow |
 | `.env.example` | Documents `VITE_API_URL` |
 
 Deleted: `src/App.css` (empty, but imported).
@@ -172,9 +183,11 @@ Deleted: `src/App.css` (empty, but imported).
 
 - `npm run lint` — clean (0 errors, 0 warnings).
 - `npm run build` — succeeds. The lazy `Services` route confirms the code split:
-  main bundle **286 kB** (97 kB gzip), TensorFlow chunk **2.03 MB** loaded only
-  when a signed-in user opens the scanner. Before this change the TF payload was
-  in the entry bundle for every visitor, including the home page.
+  main bundle **286 kB** (97 kB gzip), with the detector's Transformers.js code
+  in a separate `Services` chunk (177 kB) plus a **508 kB** worker chunk, both
+  loaded only when a signed-in user opens the scanner.
+- `npm test` — 16 `node --test` cases over the material classifier and the
+  prompt/response flow, all passing.
 - `vite dev` — every module in the graph transforms and serves `200`.
 - Not verified: real browser interaction against a live backend (no MongoDB
   instance available in this environment). The detector, geolocation and map
