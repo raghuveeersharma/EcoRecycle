@@ -14,9 +14,37 @@ import {
   env,
 } from "@huggingface/transformers";
 
+// onnxruntime-web's runtime, served from our own build. Vite emits these into
+// dist/ because ORT references them; left alone, Transformers.js points
+// `wasmPaths` at jsDelivr instead, so the copies we ship are dead weight and
+// every visitor fetches ~23MB from a third party. Importing them as URLs makes
+// our copies the ones actually fetched.
+import ortAsyncifyWasm from "onnxruntime-web/ort-wasm-simd-threaded.asyncify.wasm?url";
+import ortAsyncifyMjs from "onnxruntime-web/ort-wasm-simd-threaded.asyncify.mjs?url";
+import ortWasm from "onnxruntime-web/ort-wasm-simd-threaded.wasm?url";
+import ortMjs from "onnxruntime-web/ort-wasm-simd-threaded.mjs?url";
+
 // The weights are fetched from the Hugging Face CDN; there is no local copy to
 // probe for, and looking for one just produces 404s in the console.
 env.allowLocalModels = false;
+
+// Which of the two ORT builds to use is Transformers.js's own choice, repeated
+// here because it makes that choice only when it is picking the CDN URLs:
+// Safari on the plain SIMD+threads runtime, everything else on asyncify.
+const isSafari = () => {
+  if (typeof navigator === "undefined") return false;
+  const { userAgent, vendor = "" } = navigator;
+  return (
+    vendor.includes("Apple") &&
+    !/CriOS|FxiOS|EdgiOS|OPiOS|mercury|brave/i.test(userAgent) &&
+    !userAgent.includes("Chrome") &&
+    !userAgent.includes("Android")
+  );
+};
+
+env.backends.onnx.wasm.wasmPaths = isSafari()
+  ? { wasm: ortWasm, mjs: ortMjs }
+  : { wasm: ortAsyncifyWasm, mjs: ortAsyncifyMjs };
 
 const MODEL_ID = "HuggingFaceTB/SmolVLM-256M-Instruct";
 

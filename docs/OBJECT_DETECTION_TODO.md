@@ -187,14 +187,29 @@ this document was opened for still exists.
 - [ ] A pass in a real browser. Everything above was verified with the same
       Transformers.js calls the worker makes, but run under Node — WebGPU
       selection, the download-progress bar and the worker lifecycle have not
-      been exercised in a browser.
-- [ ] `npm run build` emits a 23 MB `ort-wasm-simd-threaded.asyncify.wasm` into
-      `dist/` that is never fetched: Transformers.js points onnxruntime-web at
-      the jsDelivr CDN by default, and the bundler emits the local copy anyway.
-      Harmless at runtime, but it is dead weight in every deploy. Pointing
-      `env.backends.onnx.wasm.wasmPaths` at the bundled copy would remove both
-      the waste and the third-party CDN dependency, but which ORT variants Vite
-      emits needs checking in a browser first.
+      been exercised in a browser. Now also covers the self-hosted ORT runtime
+      below: the built assets are served correctly and the worker asks for
+      them, but only a browser run proves ORT initialises from them.
+- [x] `npm run build` emitted a 23 MB `ort-wasm-simd-threaded.asyncify.wasm`
+      into `dist/` that was never fetched: Transformers.js points
+      onnxruntime-web at the jsDelivr CDN by default, and the bundler emitted
+      the local copy anyway. [vlm.worker.js](../EcoRecycle-main/src/workers/vlm.worker.js)
+      now imports the ORT runtime files as URLs and assigns
+      `env.backends.onnx.wasm.wasmPaths` from them, so the copies we ship are
+      the ones actually loaded and no visitor fetches the runtime from a third
+      party. Two details worth knowing:
+      - Transformers.js picks between two ORT builds — the plain SIMD+threads
+        one for Safari, asyncify for everything else — but only when it is
+        choosing CDN URLs, so the worker repeats that check itself. Both builds
+        are therefore emitted, and `dist/` carries 36.5 MB of WASM where it
+        carried 23.5 MB: nothing is dead now, but the *deploy* is bigger. Any
+        one visitor still downloads exactly one runtime.
+      - The `.mjs` factory is normally fetched as text and re-run from a blob
+        URL, so its content type does not matter; it only matters on the
+        fallback path where the binary failed to pre-load. A host that serves
+        `.mjs` as `application/octet-stream` would break that fallback —
+        `vite preview` serves it as `text/javascript`, and both `.wasm` files
+        as `application/wasm`.
 
 ### Pros
 
